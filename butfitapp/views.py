@@ -1,25 +1,75 @@
-from django.contrib.auth        import get_user_model
+import json, bcrypt, jwt, binascii, os
 
-from rest_framework             import status
-from rest_framework.viewsets    import GenericViewSet
-from rest_framework.permissions import AllowAny
-from rest_framework.response    import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.http           import JsonResponse
+from drf_yasg              import openapi
+from drf_yasg.utils        import swagger_auto_schema
+from rest_framework.views  import APIView
 
-from .models                    import User
-from .serializers               import RegisterUserSerializer
+from core.decorators       import login_required, admin_only
+from my_settings           import SECRET_KEY, ALGORITHM, ADMIN_TOKEN
+from .models               import User
+from .serializers          import UserSerializer
 
-class UserGenericViewSet(GenericViewSet):
-    permission_classes = [AllowAny]
-    queryset           = get_user_model()
-    lookup_field       = 'id'
+class SignupView(APIView):
+    @swagger_auto_schema (
+        request_body = UserSerializer, 
+        responses    = {
+            "201": "SUCCESS",
+            "400": "BAD_REQUEST" 
+        },
+        operation_id          = "회원가입",
+        operation_description = "핸드폰 번호와 비밀번호(영문, 숫자, 특수기호를 1개씩 입력해야합니다)를 입력하여 가입할 수 있습니다"
+    )
+    def post(self, request):
+        try:
+            data            = json.loads(request.body)
+            phone           = data['phone']
+            password        = data['password']
+            hashed_password = bcrypt.hashpw(password.encode('UTF-8'), bcrypt.gensalt())
 
-    def create(self, request):
-        serializer = RegisterUserSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(phone=phone).exists():
+                return JsonResponse({"MESSAGE": "EMAIL_ALREADY_EXIST"}, status=400)
+            
+            if not re.match(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$", password):
+                return JsonResponse({"MESSAGE": "INVALID_FORMAT"}, status=400)
+            
+            User.objects.create(
+                phone        =   phone,
+                password     =   hashed_password.decode('UTF-8')
+            )
+            
+            access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
 
-        user  = serializer.save()
-        token = RefreshToken.for_user(user)
-        data  = {'refresh': str(token), 'access': str(token.access_token)}
-        return Response(data, status=status.HTTP_200_OK)
+            return JsonResponse({'MESSAGE': 'SUCCESS', 'access_token': access_token}, status=201)
+
+        except KeyError:
+            return JsonResponse({'MESSAGE': 'KEY_ERROR'}, status=400)
+
+class SigninView(APIView):
+    @swagger_auto_schema (
+        request_body = UserSerializer,
+        responses    = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST"
+        },
+        operation_id          = "로그인",
+        operation_description = "전화번호와 비밀번호 입력이 필요합니다."
+    )
+    def post(self, request):
+        try: 
+            data       = json.loads(request.body)
+            phone      = data['phone']
+            password   = data['password']
+
+            if not User.objects.filter(phone = phone).exists():
+                    return JsonResponse({'MESSAGE':'NOT_VALID_USER'}, status = 401)
+
+            if bcrypt.checkpw(password.encode('utf-8'),User.objects.get(phone=phone).password.encode('utf-8')):
+                token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
+            
+                return JsonResponse({'token': token, "phone": phone}, status = 200)
+
+            return JsonResponse({'MESSAGE':'INVALID_USER'}, status=401)
+
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)

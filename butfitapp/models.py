@@ -1,35 +1,28 @@
-from django.db                  import models
-from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
+from django.db import models
 
-class UserManager(BaseUserManager):
-    def create_user(self, id, password=None):
-        if not id:
-            raise ValueError('Users must have an id')
-
-        user = self.model(id=id)
-
-        user.set_password(password)
-        user.is_active = True
-        user.save(using=self._db)
-        return user
-
-class User(AbstractBaseUser):
-    pk_id        = models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
-    id           = models.CharField(max_length=50, unique=True)
-    phone_number = models.CharField(max_length=80)
-
-    objects = UserManager()
-
-    USERNAME_FIELD  = 'id'
-
-    def __str__(self):
-        return f'{self.id}'
-
-    def has_perm(self, perm, obj=None):
-        return True
-
-    def has_module_perms(self, app_label):
-        return True
-    
+class User(models.Model):
+    phone    = models.EmailField(unique=True, null=False)
+    password = models.CharField(max_length=200, null=False)
+    role     = models.CharField(max_length=15, default='common')
+    credit   = models.IntegerField(default=0)
     class Meta:
         db_table = 'users'
+
+    def __str__(self):
+        return self.id
+
+class Class(models.Model):
+    name        = models.CharField(max_length=200)
+    location    = models.CharField(max_length=100)
+    class_type  = models.CharField(max_length=100)
+    price       = models.PositiveIntegerField(default=1)
+    capacity    = models.PositiveIntegerField(default=1)
+    date        = models.DateField()
+    start_at    = models.DateTimeField()
+    end_at      = models.DateTimeField()
+
+    class Meta:
+        db_table = 'classes'
+
+    def __str__(self):
+        return self.name
