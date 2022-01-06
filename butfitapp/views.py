@@ -1,12 +1,14 @@
-import json, re, bcrypt, jwt
+import json, re, bcrypt, jwt, decimal
+from datetime             import datetime
+from decimal              import Decimal
 
 from django.views         import View
 from django.http          import JsonResponse
 
-from .models              import User, Class
+from .models              import User, Class, Credit, Booking, BookingLog
 
 from my_settings          import SECRET_KEY, ALGORITHM
-from decorators           import login_decorator, admin_only
+from core.decorators           import login_decorator, admin_only
 
 class SignupView(View):
     def post(self, request):
@@ -54,12 +56,12 @@ class SigninView(View):
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
 
-class ClassView(View):
+class CreateClassView(View):
     @admin_only
     def post(self, request):
         try:
-            data       = json.loads(request.body)
-            name       = data['name']
+            data  = json.loads(request.body)
+            name  = data['name']
 
             if Class.objects.filter(name = name).exists():
                 return JsonReponse({'MESSAGE': 'SAME_NAME_EXIST'}, status = 401)
@@ -77,5 +79,110 @@ class ClassView(View):
             
             return JsonResponse({'MESSAGE': 'CLASS_CREATED'}, status = 200)
 
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+
+class BuyCreditView(View):
+    @login_decorator
+    def post(self, request):
+        try:
+            data  = json.loads(request.body)
+
+            Credit.objects.create(
+                user_id    = request.user.id,
+                credit     = data['number_of_credit'],
+                expire_in  = data['expire_in']
+            )
+            return JsonResponse({'MESSAGE': 'CREDIT_BOUGHT'}, status = 200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+
+class BookView(View):
+    @login_decorator
+    def post(self, request, class_id):
+        try:
+            if Booking.objects.filter(class_id_id = class_id).exists():
+                return JsonResponse({'MESSAGE':'ALREADY_BOOKED'}, status = 401)
+            class_v = Class.objects.get(id= class_id)
+
+            if not Credit.objects.filter(user_id = request.user.id).exists():
+                return JsonResponse({'MESSAGE':'NO_CREDIT'}, status = 401)
+
+            if Credit.objects.get(user_id = request.user.id).credit - class_v.price < 0:
+                return JsonResponse({'MESSAGE':'NOT_ENOUGH_CREDIT'}, status = 401)
+            
+            Credit.objects.update(
+                credit = Credit.objects.get(user_id = request.user.id).credit - class_v.price
+            )
+
+            Booking.objects.create(
+                user_id     = request.user.id,
+                class_id_id = class_id
+            )
+
+            BookingLog.objects.create(
+                user_id     = request.user.id,
+                class_id_id = class_id,
+                action      = "booked"
+            )
+
+            return JsonResponse({'MESSAGE': 'CLASS_BOOKED'}, status = 200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+
+    @login_decorator
+    def delete(self, request, class_id):
+        try:
+            if not Booking.objects.filter(class_id_id = class_id).exists():
+                return JsonResponse({'MESSAGE':'BOOKING_NOT_EXIST'}, status = 404)
+            user    = User.objects.get(id=request.user.id)
+            booking = Booking.objects.get(class_id_id = class_id)
+            class_v = Class.objects.get(id= class_id)
+            refund_credit = 0
+
+            if (class_v.date - datetime.now().date()).days < 1 :
+                return JsonResponse({'MESSAGE': 'DENIED'}, status = 200)
+            elif (class_v.date - datetime.now().date()).days < 2 :
+                refund_credit = class_v.price * 0.5
+            else:
+                refund_credit = class_v.price
+
+            Credit.objects.filter(user_id=user.id).update(
+                credit = Credit.objects.get(user_id=user.id).credit + Decimal(refund_credit)
+            )
+
+            booking.delete()
+
+            BookingLog.objects.create(
+                user_id     = request.user.id,
+                class_id_id = class_id,
+                action      = "canceled"
+            )
+
+            return JsonResponse({'MESSAGE': 'BOOKING_CANCELLED'}, status = 200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+
+class BookListView(View):
+    @login_decorator
+    def get(self, request): 
+        try:
+            if not BookingLog.objects.filter(user_id = request.user.id).exists():
+                return JsonResponse({'BOOKINGS': 'NOT_EXIST'}, status = 200)
+
+            user    = User.objects.get(id=request.user.id)
+            logs    = BookingLog.objects.filter(user_id=request.user.id)
+
+            results = [{
+                    "user"        : user.phone,
+                    "date"        : log.created_at,
+                    "class"       : Class.objects.get(id=log.class_id_id).name,
+                    "action"      : log.action,
+                    "price"       : Class.objects.get(id=log.class_id_id).price
+                } for log in logs] 
+            
+            credit_left = Credit.objects.get(user_id=request.user.id).credit
+
+            return JsonResponse({'logs': results, 'credit_left' : credit_left}, status = 200)
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)

@@ -9,9 +9,10 @@ from butfitapp.models                import User
 def login_decorator(func):
     def wrapper(self, request, *args, **kwargs):
         try:
-            token         = request.headers.get("Authorization", None)
-            user          = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-            request.user  = User.objects.get(id = user['id'])
+            access_token = request.headers.get('Authorization', None)
+            pay_load     = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+            user         = User.objects.get(id=pay_load['user_id'])
+            request.user = user
 
             return func(self, request, *args, **kwargs)
 
@@ -29,7 +30,7 @@ def login_decorator(func):
 def admin_only(func):
     def wrapper(self, request, *args, **kwargs):
         try:
-            access_token = request.headers.get('Authorization')
+            access_token = request.headers.get('Authorization', None)
             pay_load     = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
             role         = pay_load['role']
             user         = User.objects.get(id=pay_load['user_id'])
