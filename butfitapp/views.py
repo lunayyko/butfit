@@ -2,13 +2,14 @@ import json, re, bcrypt, jwt, decimal
 from datetime             import datetime
 from decimal              import Decimal
 
-from django.views         import View
-from django.http          import JsonResponse
+from django.views           import View
+from django.http            import JsonResponse
+from django.core.exceptions import ObjectDoesNotExist
 
 from .models              import User, Class, Credit, Booking, BookingLog
 
 from my_settings          import SECRET_KEY, ALGORITHM
-from core.decorators           import login_decorator, admin_only
+from core.decorators      import login_decorator, admin_only
 
 class SignupView(View):
     def post(self, request):
@@ -129,6 +130,8 @@ class BookView(View):
             return JsonResponse({'MESSAGE': 'CLASS_BOOKED'}, status = 200)
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+        except ObjectDoesNotExist:
+            return JsonResponse({"message" : "NOT_EXIST"}, status=400)
 
     @login_decorator
     def delete(self, request, class_id):
@@ -139,6 +142,8 @@ class BookView(View):
             booking = Booking.objects.get(class_id_id = class_id)
             class_v = Class.objects.get(id= class_id)
             refund_credit = 0
+
+            print("days left until class :", class_v.date - datetime.now().date())
 
             if (class_v.date - datetime.now().date()).days < 1 :
                 return JsonResponse({'MESSAGE': 'DENIED'}, status = 200)
@@ -162,8 +167,10 @@ class BookView(View):
             return JsonResponse({'MESSAGE': 'BOOKING_CANCELLED'}, status = 200)
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+        except ObjectDoesNotExist:
+            return JsonResponse({"message" : "NOT_EXIST"}, status=400)
 
-class BookListView(View):
+class LogView(View):
     @login_decorator
     def get(self, request): 
         try:
@@ -186,3 +193,32 @@ class BookListView(View):
             return JsonResponse({'logs': results, 'credit_left' : credit_left}, status = 200)
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+        except ObjectDoesNotExist:
+            return JsonResponse({"message" : "NOT_EXIST"}, status=400)
+
+class BookListAdminView(View):
+    @admin_only
+    def get(self, request): 
+        try:
+            data  = json.loads(request.body)
+            start = data['start']
+            end   = data['end']
+
+            bookings = Booking.objects.filter(created_at__range=[start,end])
+
+            results = [{
+                    "user"        : User.objects.get(id=booking.user_id).phone,
+                    "date"        : booking.created_at.date(),
+                    "class"       : Class.objects.get(id=booking.class_id_id).name,
+                    "price"       : Class.objects.get(id=booking.class_id_id).price
+                } for booking in bookings.order_by('-created_at')]
+            
+            credits_paid = 0
+            for booking in bookings:
+                credits_paid = credits_paid + Class.objects.get(id=booking.class_id_id).price
+
+            return JsonResponse({'bookings': results, 'credits_paid': credits_paid}, status = 200)
+        except KeyError:
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status = 400)
+        except ObjectDoesNotExist:
+            return JsonResponse({"message" : "NOT_EXIST"}, status=400)

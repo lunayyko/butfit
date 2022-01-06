@@ -32,7 +32,7 @@ class Credit(models.Model):
     class Meta:
         db_table = 'credits'
 
-class Booking(models.Model):
+class Booking(TimeStampModel):
     user     = models.ForeignKey(User, on_delete=models.CASCADE)
     class_id = models.ForeignKey(Class, on_delete=models.CASCADE, verbose_name='class_id')
 
