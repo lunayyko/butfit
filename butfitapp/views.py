@@ -143,8 +143,6 @@ class BookView(View):
             class_v = Class.objects.get(id= class_id)
             refund_credit = 0
 
-            print("days left until class :", class_v.date - datetime.now().date())
-
             if (class_v.date - datetime.now().date()).days < 1 :
                 return JsonResponse({'MESSAGE': 'DENIED'}, status = 200)
             elif (class_v.date - datetime.now().date()).days < 2 :
