@@ -34,15 +34,17 @@ DATABASES = {
 ALGORITHM = 'HS256'
 ```
 
-3. 서버를 실행한다(파이썬이 설치되어있어야한다)
+3. 라이브러리들을 설치한다
+```python
+pip install -r requirements.txt 
+```
+
+4. 서버를 실행한다(파이썬이 설치되어있어야한다)
 ```python
 python manage.py runserver
 ```
 
-4. 라이브러리들을 설치한다
-```python
-pip install -r requirements.txt 
-```
+
 
 
 ## 구현 기능
