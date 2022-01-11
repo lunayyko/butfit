@@ -10,6 +10,41 @@
 ## API
 [링크-postman document](https://documenter.getpostman.com/view/16843815/UVXdNyod)
 
+## 실행방법
+1.원하는 경로에 해당 프로젝트를 깃 클론 받는다
+```terminal
+git clone https://github.com/lunayyko/butfit.git
+```
+
+2.manage.py가 있는 디렉토리 상에 아래의 내용이 포함된 my_settings.py파일을 추가한다.
+```python
+SECRET_KEY = '랜덤한 특정 문자열'
+
+DATABASES = {
+    'default' : {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'butfitapp',
+        'USER': 'root',
+        'PASSWORD': '1234',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+    }
+}
+
+ALGORITHM = 'HS256'
+```
+
+3. 서버를 실행한다(파이썬이 설치되어있어야한다)
+```python
+python manage.py runserver
+```
+
+4. 라이브러리들을 설치한다
+```python
+pip install -r requirements.txt 
+```
+
+
 ## 구현 기능
 ### 회원가입, 로그인
 - 회원가입시 password 같은 민감정보는 단방향 해쉬 알고리즘인 `bcrypt`를 이용해서 암호화 하여 database에 저장하였습니다.
