@@ -42,13 +42,18 @@ mysql -u root -p
 ```sql
 mysql > create database butfitapp character set utf8mb4 collate utf8mb4_general_ci;
 ```
+4. 가상환경을 만들고 실행한다(미니콘다 설치 필요)
+```bash
+conda create -n butfit python=3.8
+conda activate butfit
+```
 
 4. 라이브러리들을 설치한다
 ```python
 pip install -r requirements.txt 
 ```
 
-5. 서버를 실행한다(파이썬이 설치되어있어야한다)
+5. 서버를 실행한다(파이썬이 설치 필요)
 ```python
 python manage.py runserver
 ```
