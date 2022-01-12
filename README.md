@@ -35,8 +35,10 @@ ALGORITHM = 'HS256'
 ```
 
 3. 데이터베이스를 생성한다
-```python
-create database butfitapp character set utf8mb4 collate utf8mb4_general_ci;
+```bash
+mysql.server start
+mysql -u root -p
+mysql > create database butfitapp character set utf8mb4 collate utf8mb4_general_ci;
 ```
 
 4. 라이브러리들을 설치한다
