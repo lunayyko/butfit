@@ -34,15 +34,22 @@ DATABASES = {
 ALGORITHM = 'HS256'
 ```
 
-3. 라이브러리들을 설치한다
+3. 데이터베이스를 생성한다
+```python
+create database butfitapp character set utf8mb4 collate utf8mb4_general_ci;
+```
+
+4. 라이브러리들을 설치한다
 ```python
 pip install -r requirements.txt 
 ```
 
-4. 서버를 실행한다(파이썬이 설치되어있어야한다)
+5. 서버를 실행한다(파이썬이 설치되어있어야한다)
 ```python
 python manage.py runserver
 ```
+
+
 
 
 
