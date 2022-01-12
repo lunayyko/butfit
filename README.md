@@ -38,6 +38,8 @@ ALGORITHM = 'HS256'
 ```bash
 mysql.server start
 mysql -u root -p
+```
+```sql
 mysql > create database butfitapp character set utf8mb4 collate utf8mb4_general_ci;
 ```
 
